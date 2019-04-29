@@ -32,6 +32,7 @@ filename = ''
 previous_file = ''
 line_num = None
 proc = None
+from glob import glob
 
 while True:
 	mesg = socket.recv()
@@ -42,7 +43,9 @@ while True:
 			cproc = Popen(['grep', '-v', 'grep'], stdin=Popen(['grep', filename], stdin=Popen(['grep', '-v', '/bin/sh'], stdin=Popen(['grep', str(proc)], stdin=Popen(['ps', '-eo', 'pid,ppid,cmd'], stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).communicate()[0].split()[0]
 			os.system('kill -9 %d %s' % (proc, cproc.decode()))
 			proc = None
-			os.system('rm %s/.%s.swp' % (os.path.dirname(previous_file), os.path.basename(previous_file)))
+			sw_files = glob(os.path.join(os.path.dirname(previous_file.decode()), '.%s.*' % os.path.basename(previous_file.decode())))
+			for sw in sw_files:
+				os.remove(sw)
 		except:
 			pass
 	if mesg == b'exit':
