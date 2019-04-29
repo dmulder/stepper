@@ -35,25 +35,25 @@ proc = None
 from glob import glob
 
 while True:
-	mesg = socket.recv()
-	socket.send(mesg)
-	if mesg and proc:
-		# Kill the process and the spawned child (proc + 1).
-		try:
-			cproc = Popen(['grep', '-v', 'grep'], stdin=Popen(['grep', filename], stdin=Popen(['grep', '-v', '/bin/sh'], stdin=Popen(['grep', str(proc)], stdin=Popen(['ps', '-eo', 'pid,ppid,cmd'], stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).communicate()[0].split()[0]
-			os.system('kill -9 %d %s' % (proc, cproc.decode()))
-			proc = None
-			sw_files = glob(os.path.join(os.path.dirname(previous_file.decode()), '.%s.*' % os.path.basename(previous_file.decode())))
-			for sw in sw_files:
-				os.remove(sw)
-		except:
-			pass
-	if mesg == b'exit':
-		break
-	if mesg:
-		filename, line_num = mesg.split(b':')
-		proc = Popen(['/bin/sh', '-c', 'vim +%s +"set cursorline" +"set so=999" %s' % (line_num.decode(), filename.decode())]).pid
-		previous_file = filename
+    mesg = socket.recv()
+    socket.send(mesg)
+    if mesg and proc:
+        # Kill the process and the spawned child (proc + 1).
+        try:
+            cproc = Popen(['grep', '-v', 'grep'], stdin=Popen(['grep', filename], stdin=Popen(['grep', '-v', '/bin/sh'], stdin=Popen(['grep', str(proc)], stdin=Popen(['ps', '-eo', 'pid,ppid,cmd'], stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).communicate()[0].split()[0]
+            os.system('kill -9 %d %s' % (proc, cproc.decode()))
+            proc = None
+            sw_files = glob(os.path.join(os.path.dirname(previous_file.decode()), '.%s.*' % os.path.basename(previous_file.decode())))
+            for sw in sw_files:
+                os.remove(sw)
+        except:
+            pass
+    if mesg == b'exit':
+        break
+    if mesg:
+        filename, line_num = mesg.split(b':')
+        proc = Popen(['/bin/sh', '-c', 'vim +%s +"set cursorline" +"set so=999" %s' % (line_num.decode(), filename.decode())]).pid
+        previous_file = filename
 
 socket.close()
 
