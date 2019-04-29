@@ -46,7 +46,7 @@ def discover(syslog, code_path):
             srcln = m.group(2)
             print(line)
             try:
-                socket.send_string("%s:%s" % (os.path.join(code_path, filename), srcln))
+                socket.send_string("%s:%s" % (os.path.abspath(os.path.join(code_path, filename)), srcln))
                 socket.recv()
                 input()
             except EOFError:
