@@ -40,12 +40,12 @@ while True:
 		# Kill the process and the spawned child (proc + 1).
 		try:
 			cproc = Popen(['grep', '-v', 'grep'], stdin=Popen(['grep', filename], stdin=Popen(['grep', '-v', '/bin/sh'], stdin=Popen(['grep', str(proc)], stdin=Popen(['ps', '-eo', 'pid,ppid,cmd'], stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).stdout, stdout=PIPE).communicate()[0].split()[0]
-			os.system('kill -9 %s %s' % (str(proc), cproc))
+			os.system('kill -9 %d %s' % (proc, cproc.decode()))
 			proc = None
 			os.system('rm %s/.%s.swp' % (os.path.dirname(previous_file), os.path.basename(previous_file)))
 		except:
 			pass
-	if mesg == 'exit':
+	if mesg == b'exit':
 		break
 	if mesg:
 		filename, line_num = mesg.split(b':')
