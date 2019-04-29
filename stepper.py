@@ -20,7 +20,7 @@ def discover(syslog, code_path):
     socket.connect("tcp://127.0.0.1:%d" % debug_id)
 
     time_stamp_res = [re.compile('^\s*\[(\d+/\d+/\d+\s+\d+:\d+:[\d\.]+),\s+[^\]]+\]\s+(.*)$')]
-    file_line_mo = re.compile(r'([\./\-\w]+):(\d+)')
+    file_line_func_res = [re.compile(r'([\./\-\w]+):(\d+)\(([^\)])+\)')]
 
     ln = 1
     with open(syslog, 'r') as f:
@@ -39,12 +39,20 @@ def discover(syslog, code_path):
                 buf += line
                 continue
             date = date_parse(stamp)
-            m = file_line_mo.match(line)
-            if not m:
-                sys.stderr.write('No filename found on line %d\n' % ln)
-            filename = m.group(1)
-            srcln = m.group(2)
+            filename = None
+            srcln = None
+            func = None
+            for mo in file_line_func_res:
+                m = mo.match(line)
+                if m:
+                    filename = m.group(1)
+                    srcln = m.group(2)
+                    func = m.group(3)
             print(line)
+            ln += 1
+            if not filename or not srcln:
+                sys.stderr.write('No filename found on line %d\n' % ln-1)
+                continue
             try:
                 socket.send_string("%s:%s" % (os.path.abspath(os.path.join(code_path, filename)), srcln))
                 socket.recv()
@@ -54,7 +62,6 @@ def discover(syslog, code_path):
                 socket.recv()
                 socket.close()
                 break
-            ln += 1
 
 if __name__ == "__main__":
 
