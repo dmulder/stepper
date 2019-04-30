@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 
-import difflib, sys, os.path, argparse
+import sys, os.path, argparse
 from dateutil.parser import parse as date_parse
 import re, zmq, random
+import parse
+import pathlib
 
-def similarity(a, b):
-    return difflib.SequenceMatcher(None, a, b)
+__asts = {}
+def get_ast(filename, code_path, funcname):
+    global __asts
+
+    if filename not in __asts:
+        __asts[filename] = parse.parse_c(filename, code_path)
+    return parse.lookup_function(__asts[filename], funcname)
 
 def discover(syslog, code_path):
     debug_id = random.randint(5000, 6000)
@@ -48,13 +55,15 @@ def discover(syslog, code_path):
                     filename = m.group(1)
                     srcln = m.group(2)
                     func = m.group(3)
+            filename = os.path.abspath(next(pathlib.Path(code_path).glob('**/%s' % filename)))
             print(line)
+            print(get_ast(filename, code_path, func))
             ln += 1
             if not filename or not srcln:
                 sys.stderr.write('No filename found on line %d\n' % ln-1)
                 continue
             try:
-                socket.send_string("%s:%s" % (os.path.abspath(os.path.join(code_path, filename)), srcln))
+                socket.send_string("%s:%s" % (filename, srcln))
                 socket.recv()
                 input()
             except EOFError:

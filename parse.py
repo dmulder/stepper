@@ -1,19 +1,27 @@
 from pycparserext.ext_c_parser import GnuCParser as CParser
 from pycparser.plyparser import ParseError
+from pycparser.c_ast import *
 from subprocess import Popen, PIPE
 from shutil import which
 import re, os.path
 import pathlib
 
 __ignored_symbols = []
+__opts = ['-D__alignof__(x)=', '-D__aligned__(x)=', '-D__attribute__(x)=', '-D__THROWNL=', '-D__signed__=']
 
-def __preprocess(filename, header_dir, opts=[]):
-    opts.extend(['-D__alignof__(x)=', '-D__aligned__(x)=', '-D__attribute__(x)=', '-D__THROWNL=', '-D__signed__='])
+def lookup_function(ast, name):
+    for child in ast.ext:
+        if type(child) == FuncDef and child.decl.name == name:
+            return child
+    return None
+
+def __preprocess(filename, header_dir):
+    global __opts
     result = ''
     ret = -1
     while ret != 0:
         cmd = [which('cpp'), filename]
-        cmd.extend(opts)
+        cmd.extend(__opts)
         p = Popen(cmd, stderr=PIPE, stdout=PIPE)
         out = p.communicate()
         err = out[-1].decode()
@@ -40,7 +48,7 @@ def __preprocess(filename, header_dir, opts=[]):
             if len(best_choice) == 0:
                 print('%s not found in header directory %s' % (header, header_dir))
                 exit(1)
-            opts.append('-I%s' % best_choice.replace(header, ''))
+            __opts.append('-I%s' % best_choice.replace(header, ''))
         if len(headers) == 0 and ret != 0:
             print(err)
             exit(1)
@@ -69,12 +77,12 @@ def __guess_symbol(filename, linen, charn):
         raise
 
 def parse_c(filename, header_dir):
+    global __opts
     parse_error_mo = re.compile(r'([/\w\.\-]+):(\d+):(\d+): before: .*')
     ast = None
     retry_parse = True
-    opts = []
     while retry_parse:
-        source = __preprocess(filename, header_dir, opts)
+        source = __preprocess(filename, header_dir)
         parser = CParser()
         try:
             ast = parser.parse(source, filename)
@@ -84,8 +92,8 @@ def parse_c(filename, header_dir):
             if not m:
                 raise
             opt = __guess_symbol(m.group(1), int(m.group(2)), int(m.group(3)))
-            if opt and opt not in opts:
-                opts.append(opt)
+            if opt and opt not in __opts:
+                __opts.append(opt)
             else:
                 raise
     return ast
