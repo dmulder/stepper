@@ -60,7 +60,7 @@ def guess_symbol(filename, linen, charn):
         raise
 
 def parse_c(filename, header_dir):
-    parse_error_mo = re.compile(r'([/\w\.]+):(\d+):(\d+): before: [\w]+')
+    parse_error_mo = re.compile(r'([/\w\.\-]+):(\d+):(\d+): before: [\w]+')
     ast = None
     retry_parse = True
     opts = []
