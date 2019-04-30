@@ -8,6 +8,7 @@ import pathlib
 __ignored_symbols = []
 
 def __preprocess(filename, header_dir, opts=[]):
+    opts.extend(['-D__alignof__(x)=', '-D__aligned__(x)=', '-D__attribute__(x)=', '-D__THROWNL=', '-D__signed__='])
     result = ''
     ret = -1
     while ret != 0:
@@ -64,10 +65,6 @@ def __guess_symbol(filename, linen, charn):
     __ignored_symbols.append(symbol)
     if 'float' in symbol.lower():
         return '-D%s=float' % symbol
-    elif symbol in ['__alignof__', '__aligned__', '__attribute__']:
-        return '-D%s(x)=' % symbol
-    elif symbol in ['__THROWNL', '__signed__']:
-        return '-D%s=' % symbol
     else:
         raise
 
