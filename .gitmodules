@@ -1,0 +1,4 @@
+[submodule "pycparserext"]
+	path = pycparserext
+	url = https://github.com/inducer/pycparserext.git
+	branch = master
