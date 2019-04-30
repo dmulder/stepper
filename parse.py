@@ -5,9 +5,9 @@ from shutil import which
 import re, os.path
 import pathlib
 
-ignored_symbols = []
+__ignored_symbols = []
 
-def preprocess(filename, header_dir, opts=[]):
+def __preprocess(filename, header_dir, opts=[]):
     result = ''
     ret = -1
     while ret != 0:
@@ -45,8 +45,8 @@ def preprocess(filename, header_dir, opts=[]):
             exit(1)
     return result
 
-def guess_symbol(filename, linen, charn):
-    global ignored_symbols
+def __guess_symbol(filename, linen, charn):
+    global __ignored_symbols
     symbol = ''
     with open(filename, 'r') as r:
         buf = ''
@@ -58,10 +58,10 @@ def guess_symbol(filename, linen, charn):
         symbols = re.findall("'\\\\.?'|'.?'|\".+\"|\w+|\d+|-\d+|//|-=|\+=|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||!|\"|\#|\$|%|&|\'|\(|\)|\*|\+|,|-|\.|/|:|;|<|=|>|\?|@|\[|\]|\\\\|\]|\^|_|`|\{|\||\}|~", buf)
         symbol = None
         for i in range(len(symbols)-1, -1, -1): # Pick the first identifier
-            if re.match("[a-zA-Z0-9_]+", symbols[i]) and symbols[i] not in ignored_symbols:
+            if re.match("[a-zA-Z0-9_]+", symbols[i]) and symbols[i] not in __ignored_symbols:
                 symbol = symbols[i]
                 break
-    ignored_symbols.append(symbol)
+    __ignored_symbols.append(symbol)
     if 'float' in symbol.lower():
         return '-D%s=float' % symbol
     elif symbol in ['__alignof__', '__aligned__', '__attribute__']:
@@ -77,7 +77,7 @@ def parse_c(filename, header_dir):
     retry_parse = True
     opts = []
     while retry_parse:
-        source = preprocess(filename, header_dir, opts)
+        source = __preprocess(filename, header_dir, opts)
         parser = CParser()
         try:
             ast = parser.parse(source, filename)
@@ -86,14 +86,14 @@ def parse_c(filename, header_dir):
             m = parse_error_mo.match(e.args[0])
             if not m:
                 raise
-            opt = guess_symbol(m.group(1), int(m.group(2)), int(m.group(3)))
+            opt = __guess_symbol(m.group(1), int(m.group(2)), int(m.group(3)))
             if opt and opt not in opts:
                 opts.append(opt)
             else:
                 raise
-
-    ast.show(showcoord=True)
+    return ast
 
 if __name__ == "__main__":
     import sys
-    parse_c(sys.argv[1], sys.argv[2])
+    ast = parse_c(sys.argv[1], sys.argv[2])
+    ast.show(showcoord=True)
