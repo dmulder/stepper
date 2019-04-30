@@ -5,6 +5,8 @@ from shutil import which
 import re, os.path
 import pathlib
 
+ignored_symbols = []
+
 def preprocess(filename, header_dir, opts=[]):
     result = ''
     ret = -1
@@ -44,23 +46,33 @@ def preprocess(filename, header_dir, opts=[]):
     return result
 
 def guess_symbol(filename, linen, charn):
+    global ignored_symbols
     symbol = ''
     with open(filename, 'r') as r:
-        for i in range(linen-1):
+        buf = ''
+        for i in range(linen-15):
             r.readline()
-        symbols = re.findall("'\\\\.?'|'.?'|\".+\"|\w+|\d+|-\d+|//|-=|\+=|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||!|\"|\#|\$|%|&|\'|\(|\)|\*|\+|,|-|\.|/|:|;|<|=|>|\?|@|\[|\]|\\\\|\]|\^|_|`|\{|\||\}|~", r.readline()[:charn-1].strip())
+        for i in range(linen-15, linen-1):
+            buf += r.readline()
+        buf += r.readline()[:charn-1].rstrip()
+        symbols = re.findall("'\\\\.?'|'.?'|\".+\"|\w+|\d+|-\d+|//|-=|\+=|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||!|\"|\#|\$|%|&|\'|\(|\)|\*|\+|,|-|\.|/|:|;|<|=|>|\?|@|\[|\]|\\\\|\]|\^|_|`|\{|\||\}|~", buf)
         symbol = None
         for i in range(len(symbols)-1, -1, -1): # Pick the first identifier
-            if re.match("[a-zA-Z0-9_]+", symbols[i]):
+            if re.match("[a-zA-Z0-9_]+", symbols[i]) and symbols[i] not in ignored_symbols:
                 symbol = symbols[i]
                 break
+    ignored_symbols.append(symbol)
     if 'float' in symbol.lower():
         return '-D%s=float' % symbol
+    elif symbol in ['__alignof__', '__aligned__', '__attribute__']:
+        return '-D%s(x)=' % symbol
+    elif symbol in ['__THROWNL', '__signed__']:
+        return '-D%s=' % symbol
     else:
         raise
 
 def parse_c(filename, header_dir):
-    parse_error_mo = re.compile(r'([/\w\.\-]+):(\d+):(\d+): before: [\w]+')
+    parse_error_mo = re.compile(r'([/\w\.\-]+):(\d+):(\d+): before: .*')
     ast = None
     retry_parse = True
     opts = []
@@ -75,7 +87,7 @@ def parse_c(filename, header_dir):
             if not m:
                 raise
             opt = guess_symbol(m.group(1), int(m.group(2)), int(m.group(3)))
-            if opt:
+            if opt and opt not in opts:
                 opts.append(opt)
             else:
                 raise
