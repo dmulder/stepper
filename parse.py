@@ -48,7 +48,12 @@ def guess_symbol(filename, linen, charn):
     with open(filename, 'r') as r:
         for i in range(linen-1):
             r.readline()
-        symbol = r.readline()[:charn-1].strip().split()[-1]
+        symbols = re.findall("'\\\\.?'|'.?'|\".+\"|\w+|\d+|-\d+|//|-=|\+=|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||!|\"|\#|\$|%|&|\'|\(|\)|\*|\+|,|-|\.|/|:|;|<|=|>|\?|@|\[|\]|\\\\|\]|\^|_|`|\{|\||\}|~", r.readline()[:charn-1].strip())
+        symbol = None
+        for i in range(len(symbols)-1, -1, -1): # Pick the first identifier
+            if re.match("[a-zA-Z0-9_]+", symbols[i]):
+                symbol = symbols[i]
+                break
     if 'float' in symbol.lower():
         return '-D%s=float' % symbol
     else:
