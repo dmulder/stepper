@@ -7,14 +7,14 @@ import parse
 import pathlib
 
 __asts = {}
-def get_ast(filename, code_path, funcname):
+def get_ast(filename, code_path, funcname, use_fakes):
     global __asts
 
     if filename not in __asts:
-        __asts[filename] = parse.parse_c(filename, code_path)
+        __asts[filename] = parse.parse_c(filename, code_path, use_fakes)
     return parse.lookup_function(__asts[filename], funcname)
 
-def discover(syslog, code_path):
+def discover(syslog, code_path, use_fakes):
     debug_id = random.randint(5000, 6000)
     ui = os.path.join(os.path.dirname(sys.argv[0]), 'stepper_ui')
     if not os.path.exists(ui):
@@ -57,7 +57,7 @@ def discover(syslog, code_path):
                     func = m.group(3)
             filename = os.path.abspath(next(pathlib.Path(code_path).glob('**/%s' % filename)))
             print(line)
-            print(get_ast(filename, code_path, func))
+            print(get_ast(filename, code_path, func, use_fakes))
             ln += 1
             if not filename or not srcln:
                 sys.stderr.write('No filename found on line %d\n' % ln-1)
@@ -77,6 +77,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stepper: Step through syslog output, opening the source code mentioned in the debug.", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("syslog", help="File where syslog messages are stored")
     parser.add_argument("code_path", help="Location of source code referenced in syslog messages")
+    parser.add_argument('--use-fakes', help="Use fake headers to parse source code", action="store_true", default=False)
 
     args = parser.parse_args()
 
@@ -87,5 +88,5 @@ if __name__ == "__main__":
         sys.stderr.write('The specified code path does not exist\n' % args.code_path)
         exit(2)
 
-    discover(args.syslog, args.code_path)
+    discover(args.syslog, args.code_path, args.use_fakes)
 

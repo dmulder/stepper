@@ -9,6 +9,18 @@ import pathlib
 __ignored_symbols = []
 __opts = ['-D__alignof__(x)=', '-D__aligned__(x)=', '-D__attribute__(x)=', '-D__THROWNL=', '-D__signed__=']
 
+def fake_headers():
+    # Try to locate the pycparser fake header files
+    # /usr/lib/python3.7/site-packages/utils/fake_libc_include
+    location = None
+    rpm = which('rpm')
+    if rpm:
+        p = Popen([which(rpm), '-ql', 'python3-pycparser'], stdout=PIPE)
+        output = p.communicate()[0]
+        candidate = re.findall(r'([/\w\.\-]+fake_libc_include[/\w\.\-]+)', output.decode())[-1]
+        location = candidate[:candidate.index('fake_libc_include')+17]
+    return location
+
 def lookup_function(ast, name):
     for child in ast.ext:
         if type(child) == FuncDef and child.decl.name == name:
@@ -76,8 +88,12 @@ def __guess_symbol(filename, linen, charn):
     else:
         raise
 
-def parse_c(filename, header_dir):
+def parse_c(filename, header_dir, use_fakes=False):
     global __opts
+    if use_fakes:
+        fake_include_dir = fake_headers()
+        if fake_include_dir:
+            __opts.append('-I%s' % fake_include_dir)
     parse_error_mo = re.compile(r'([/\w\.\-]+):(\d+):(\d+): before: .*')
     ast = None
     retry_parse = True
