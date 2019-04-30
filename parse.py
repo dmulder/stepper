@@ -1,12 +1,12 @@
-from pycparser import c_parser as __c_parser
+from pycparserext.ext_c_parser import GnuCParser as CParser
+from pycparser.plyparser import ParseError
 from subprocess import Popen, PIPE
 from shutil import which
 import re, os.path
 import pathlib
 
-def preprocess(filename, header_dir):
+def preprocess(filename, header_dir, opts=[]):
     result = ''
-    opts = []
     ret = -1
     while ret != 0:
         cmd = [which('cpp'), filename]
@@ -43,10 +43,38 @@ def preprocess(filename, header_dir):
             exit(1)
     return result
 
+def guess_symbol(filename, linen, charn):
+    symbol = ''
+    with open(filename, 'r') as r:
+        for i in range(linen-1):
+            r.readline()
+        symbol = r.readline()[:charn-1].strip().split()[-1]
+    if 'float' in symbol.lower():
+        return '-D%s=float' % symbol
+    else:
+        raise
+
 def parse_c(filename, header_dir):
-    source = preprocess(filename, header_dir)
-    parser = __c_parser.CParser()
-    ast = parser.parse(source, filename)
+    parse_error_mo = re.compile(r'([/\w\.]+):(\d+):(\d+): before: [\w]+')
+    ast = None
+    retry_parse = True
+    opts = []
+    while retry_parse:
+        source = preprocess(filename, header_dir, opts)
+        parser = CParser()
+        try:
+            ast = parser.parse(source, filename)
+            retry_parse = False
+        except ParseError as e:
+            m = parse_error_mo.match(e.args[0])
+            if not m:
+                raise
+            opt = guess_symbol(m.group(1), int(m.group(2)), int(m.group(3)))
+            if opt:
+                opts.append(opt)
+            else:
+                raise
+
     ast.show(showcoord=True)
 
 if __name__ == "__main__":
