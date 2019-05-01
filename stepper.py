@@ -14,7 +14,7 @@ def get_ast(filename, code_path, funcname, use_fakes):
         __asts[filename] = parse.parse_c(filename, code_path, use_fakes)
     return parse.lookup_function(__asts[filename], funcname)
 
-def discover(syslog, code_path, use_fakes):
+def discover(syslog, code_path, use_fakes, line_num):
     debug_id = random.randint(5000, 6000)
     ui = os.path.join(os.path.dirname(sys.argv[0]), 'stepper_ui')
     if not os.path.exists(ui):
@@ -27,13 +27,16 @@ def discover(syslog, code_path, use_fakes):
     socket.connect("tcp://127.0.0.1:%d" % debug_id)
 
     time_stamp_res = [re.compile('^\s*\[(\d+/\d+/\d+\s+\d+:\d+:[\d\.]+),\s+[^\]]+\]\s+(.*)$')]
-    file_line_func_res = [re.compile(r'([\./\-\w]+):(\d+)\(([^\)])+\)')]
+    file_line_func_res = [re.compile(r'([\./\-\w]+):(\d+)\(([^\)]+)\)')]
 
     ln = 1
     with open(syslog, 'r') as f:
         buf_stamp = None
         buf = '' # Buffer for multi-line messages
         for line in f:
+            if ln < line_num:
+                ln += 1
+                continue
             stamp = None
             for mo in time_stamp_res:
                 m = mo.match(line)
@@ -78,6 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("syslog", help="File where syslog messages are stored")
     parser.add_argument("code_path", help="Location of source code referenced in syslog messages")
     parser.add_argument('--use-fakes', help="Use fake headers to parse source code", action="store_true", default=False)
+    parser.add_argument('--line-num', help="The syslog line number to start at", action="store", default=1)
 
     args = parser.parse_args()
 
@@ -88,5 +92,5 @@ if __name__ == "__main__":
         sys.stderr.write('The specified code path does not exist\n' % args.code_path)
         exit(2)
 
-    discover(args.syslog, args.code_path, args.use_fakes)
+    discover(args.syslog, args.code_path, args.use_fakes, int(args.line_num))
 
