@@ -5,6 +5,11 @@ from dateutil.parser import parse as date_parse
 import re, zmq, random
 import parse
 import pathlib
+from subprocess import Popen, PIPE
+from shutil import which
+import pexpect
+import pickle
+from tempfile import NamedTemporaryFile
 
 __asts = {}
 def get_ast(filename, code_path, funcname, use_fakes):
@@ -13,6 +18,26 @@ def get_ast(filename, code_path, funcname, use_fakes):
     if filename not in __asts:
         __asts[filename] = parse.parse_c(filename, code_path, use_fakes)
     return parse.lookup_function(__asts[filename], funcname)
+
+def interact(filename, code_path, funcname, use_fakes):
+    while True:
+        command = input('> ').strip()
+        if command == 'interact':
+            print('Opening an interactive shell... type "exit" to leave the shell.')
+            shell = pexpect.spawn(which('python3'))
+            shell.sendline('import pickle, parse')
+            shell.expect('>>> ')
+            print('Parsing the c code...')
+            ast = get_ast(filename, code_path, funcname, use_fakes)
+            tmp = NamedTemporaryFile('wb', delete=False)
+            pickle.dump(ast, tmp)
+            shell.sendline('ast = pickle.load(open("%s", "rb"))' % tmp.name)
+            shell.expect('>>> ')
+            shell.interact()
+            os.remove(tmp.name)
+            tmp.close()
+        elif command == '':
+            break
 
 def discover(syslog, code_path, use_fakes, line_num):
     debug_id = random.randint(5000, 6000)
@@ -59,8 +84,8 @@ def discover(syslog, code_path, use_fakes, line_num):
                     srcln = m.group(2)
                     func = m.group(3)
             filename = os.path.abspath(next(pathlib.Path(code_path).glob('**/%s' % filename)))
-            print(line)
-            print(get_ast(filename, code_path, func, use_fakes))
+            print('%d: %s' % (ln, str(date)))
+            print(line.strip())
             ln += 1
             if not filename or not srcln:
                 sys.stderr.write('No filename found on line %d\n' % ln-1)
@@ -68,8 +93,9 @@ def discover(syslog, code_path, use_fakes, line_num):
             try:
                 socket.send_string("%s:%s" % (filename, srcln))
                 socket.recv()
-                input()
+                interact(filename, code_path, func, use_fakes)
             except EOFError:
+                print()
                 socket.send_string('exit')
                 socket.recv()
                 socket.close()
