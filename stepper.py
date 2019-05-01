@@ -72,6 +72,7 @@ def discover(syslog, code_path, use_fakes, line_num):
                     buf = m.group(2) + '\n'
             if not stamp:
                 buf += line
+                ln += 1
                 continue
             date = date_parse(stamp)
             filename = None
